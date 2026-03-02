@@ -139,13 +139,22 @@ public class AsanaFormController {
                     .toList();
 
             if (!fieldsWithValues.isEmpty()) {
-                for (AsanaCustomField cf : fieldsWithValues) {
-                    Map<String, Object> cfField = new LinkedHashMap<>();
-                    cfField.put("type", "static_text");
-                    cfField.put("id", "custom_field_" + cf.getGid());
-                    cfField.put("name", cf.getName() + ": " + cf.getDisplayValue());
-                    fields.add(cfField);
-                }
+                List<Map<String, String>> cfOptions = fieldsWithValues.stream()
+                        .map(cf -> {
+                            Map<String, String> option = new LinkedHashMap<>();
+                            option.put("id", cf.getGid());
+                            option.put("label", cf.getName() + ": " + cf.getDisplayValue());
+                            return option;
+                        })
+                        .collect(Collectors.toList());
+
+                Map<String, Object> cfField = new LinkedHashMap<>();
+                cfField.put("type", "checkbox");
+                cfField.put("id", "selected_custom_fields");
+                cfField.put("name", "Select custom fields");
+                cfField.put("is_required", false);
+                cfField.put("options", cfOptions);
+                fields.add(cfField);
             }
         }
 
