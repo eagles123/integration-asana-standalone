@@ -1,0 +1,79 @@
+package com.baker.integration.asana.service;
+
+import com.baker.integration.asana.exception.AsanaApiException;
+import com.baker.integration.asana.model.asana.AsanaAttachment;
+import com.baker.integration.asana.model.asana.AsanaAttachmentDetailResponse;
+import com.baker.integration.asana.model.asana.AsanaAttachmentListResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.Collections;
+import java.util.List;
+
+@Service
+public class AsanaApiService {
+
+    private static final Logger log = LoggerFactory.getLogger(AsanaApiService.class);
+    private static final String OPT_FIELDS = "gid,name,download_url,content_type,size,host,view_url";
+
+    private final WebClient asanaWebClient;
+
+    public AsanaApiService(@Qualifier("asanaWebClient") WebClient asanaWebClient) {
+        this.asanaWebClient = asanaWebClient;
+    }
+
+    public List<AsanaAttachment> getTaskAttachments(String taskGid, String accessToken) {
+        try {
+            AsanaAttachmentListResponse response = asanaWebClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/tasks/{taskGid}/attachments")
+                            .queryParam("opt_fields", OPT_FIELDS)
+                            .build(taskGid))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .bodyToMono(AsanaAttachmentListResponse.class)
+                    .block();
+
+            if (response == null || response.getData() == null) {
+                log.warn("No attachments found for task: {}", taskGid);
+                return Collections.emptyList();
+            }
+
+            List<AsanaAttachment> attachments = response.getData().stream()
+                    .filter(a -> "asana".equals(a.getHost()))
+                    .toList();
+
+            log.info("Found {} downloadable attachments for task: {}", attachments.size(), taskGid);
+            return attachments;
+        } catch (Exception e) {
+            throw new AsanaApiException("Failed to fetch attachments for task: " + taskGid, e);
+        }
+    }
+
+    public AsanaAttachment getAttachmentDetail(String attachmentGid, String accessToken) {
+        try {
+            AsanaAttachmentDetailResponse response = asanaWebClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/attachments/{attachmentGid}")
+                            .queryParam("opt_fields", OPT_FIELDS)
+                            .build(attachmentGid))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .bodyToMono(AsanaAttachmentDetailResponse.class)
+                    .block();
+
+            if (response == null || response.getData() == null) {
+                throw new AsanaApiException("Attachment not found: " + attachmentGid);
+            }
+
+            return response.getData();
+        } catch (AsanaApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new AsanaApiException("Failed to fetch attachment detail: " + attachmentGid, e);
+        }
+    }
+}

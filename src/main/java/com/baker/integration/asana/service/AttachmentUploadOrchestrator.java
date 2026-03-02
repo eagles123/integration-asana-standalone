@@ -1,0 +1,70 @@
+package com.baker.integration.asana.service;
+
+import com.baker.integration.asana.model.asana.AsanaAttachment;
+import com.baker.integration.asana.model.assets.AssetResponse;
+import com.baker.integration.asana.model.assets.UploadLinkResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+@Service
+public class AttachmentUploadOrchestrator {
+
+    private static final Logger log = LoggerFactory.getLogger(AttachmentUploadOrchestrator.class);
+
+    private final ParagonTokenService paragonTokenService;
+    private final AsanaApiService asanaApiService;
+    private final ServiceAssetsClient serviceAssetsClient;
+    private final FileTransferService fileTransferService;
+
+    public AttachmentUploadOrchestrator(ParagonTokenService paragonTokenService,
+                                       AsanaApiService asanaApiService,
+                                       ServiceAssetsClient serviceAssetsClient,
+                                       FileTransferService fileTransferService) {
+        this.paragonTokenService = paragonTokenService;
+        this.asanaApiService = asanaApiService;
+        this.serviceAssetsClient = serviceAssetsClient;
+        this.fileTransferService = fileTransferService;
+    }
+
+    @Async("fileTransferExecutor")
+    public CompletableFuture<List<AssetResponse>> processAsync(String taskGid, String asanaUserId,
+                                                                List<String> attachmentGids) {
+        log.info("Starting async upload of {} attachments from task: {}", attachmentGids.size(), taskGid);
+
+        String accessToken = paragonTokenService.getAsanaToken(asanaUserId);
+        List<AssetResponse> results = new ArrayList<>();
+
+        for (String attachmentGid : attachmentGids) {
+            try {
+                AsanaAttachment attachment = asanaApiService.getAttachmentDetail(attachmentGid, accessToken);
+                log.info("Processing attachment: {} ({})", attachment.getName(), attachmentGid);
+
+                UploadLinkResponse uploadLink = serviceAssetsClient.getUploadLink(
+                        attachment.getName(), attachment.getContentType());
+
+                fileTransferService.transferFile(
+                        attachment.getDownloadUrl(),
+                        uploadLink.getUploadLink(),
+                        attachment.getContentType(),
+                        attachment.getSize());
+
+                AssetResponse asset = serviceAssetsClient.finalizeUpload(uploadLink.getObjectKey());
+                results.add(asset);
+
+                log.info("Successfully uploaded attachment {} as asset {}", attachmentGid, asset.getId());
+            } catch (Exception e) {
+                log.error("Failed to upload attachment {}: {}", attachmentGid, e.getMessage(), e);
+            }
+        }
+
+        log.info("Upload batch completed: {}/{} attachments succeeded for task: {}",
+                results.size(), attachmentGids.size(), taskGid);
+        return CompletableFuture.completedFuture(results);
+    }
+}

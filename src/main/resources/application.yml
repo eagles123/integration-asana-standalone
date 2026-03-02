@@ -1,0 +1,18 @@
+server:
+  port: ${PORT:8802}
+
+asana:
+  client-secret: ${ASANA_CLIENT_SECRET:}
+  api-base-url: https://app.asana.com/api/1.0
+
+paragon:
+  api-base-url: https://api.useparagon.com
+  project-id: ${PARAGON_PROJECT_ID:}
+  signing-key: ${PARAGON_SIGNING_KEY:}
+
+service-assets:
+  base-url: ${SERVICE_ASSETS_URL:http://baker-service-assets}
+
+file-transfer:
+  max-concurrent: 5
+  timeout-minutes: 10
