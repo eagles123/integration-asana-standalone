@@ -130,13 +130,21 @@ public class AsanaFormController {
 
         // Tags section
         if (!tags.isEmpty()) {
-            String tagNames = tags.stream()
-                    .map(AsanaTag::getName)
-                    .collect(Collectors.joining(", "));
+            List<Map<String, String>> tagOptions = tags.stream()
+                    .map(t -> {
+                        Map<String, String> option = new LinkedHashMap<>();
+                        option.put("id", t.getGid());
+                        option.put("label", t.getName());
+                        return option;
+                    })
+                    .collect(Collectors.toList());
+
             Map<String, Object> tagsField = new LinkedHashMap<>();
-            tagsField.put("type", "static_text");
-            tagsField.put("id", "task_tags");
-            tagsField.put("name", "Tags: " + tagNames);
+            tagsField.put("type", "checkbox");
+            tagsField.put("id", "selected_tags");
+            tagsField.put("name", "Select tags");
+            tagsField.put("is_required", false);
+            tagsField.put("options", tagOptions);
             fields.add(tagsField);
         }
 
