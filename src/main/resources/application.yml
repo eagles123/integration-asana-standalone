@@ -1,5 +1,6 @@
 server:
   port: ${PORT:8802}
+  forward-headers-strategy: framework
 
 asana:
   client-secret: ${ASANA_CLIENT_SECRET:}
