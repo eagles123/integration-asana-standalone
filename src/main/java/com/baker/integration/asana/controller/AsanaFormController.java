@@ -146,7 +146,7 @@ public class AsanaFormController {
                     .collect(Collectors.toList());
 
             Map<String, Object> selectField = new LinkedHashMap<>();
-            selectField.put("type", "checkboxes");
+            selectField.put("type", "checkbox");
             selectField.put("id", "selected_attachments");
             selectField.put("name", "Select attachments to upload");
             selectField.put("is_required", true);
