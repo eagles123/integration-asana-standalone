@@ -25,12 +25,17 @@ public class AsanaSignatureVerificationService {
     }
 
     public void verifyGetRequest(String fullUrl, String signatureHeader) {
+        log.info("Signature verification - Full URL: {}", fullUrl);
+        log.info("Signature verification - Client secret length: {}",
+                asanaAppProperties.getClientSecret() != null ? asanaAppProperties.getClientSecret().length() : "null");
         String computed = computeHmac(fullUrl);
+        log.info("Signature verification - Computed: {}", computed);
+        log.info("Signature verification - Received: {}", signatureHeader);
         if (!MessageDigest.isEqual(computed.getBytes(StandardCharsets.UTF_8),
                 signatureHeader.getBytes(StandardCharsets.UTF_8))) {
             throw new AsanaSignatureException("Invalid signature for GET request");
         }
-        log.debug("GET request signature verified successfully");
+        log.info("GET request signature verified successfully");
     }
 
     public void verifyPostRequest(String requestBody, String signatureHeader) {
