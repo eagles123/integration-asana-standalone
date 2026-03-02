@@ -4,8 +4,10 @@ import com.baker.integration.asana.exception.AsanaApiException;
 import com.baker.integration.asana.model.asana.AsanaAttachment;
 import com.baker.integration.asana.model.asana.AsanaAttachmentDetailResponse;
 import com.baker.integration.asana.model.asana.AsanaAttachmentListResponse;
+import com.baker.integration.asana.model.asana.AsanaCustomField;
 import com.baker.integration.asana.model.asana.AsanaTag;
 import com.baker.integration.asana.model.asana.AsanaTagListResponse;
+import com.baker.integration.asana.model.asana.AsanaTaskResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -76,6 +78,33 @@ public class AsanaApiService {
             return response.getData();
         } catch (Exception e) {
             log.warn("Failed to fetch tags for task: {} - {}", taskGid, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    public List<AsanaCustomField> getTaskCustomFields(String taskGid, String accessToken) {
+        try {
+            AsanaTaskResponse response = asanaWebClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/tasks/{taskGid}")
+                            .queryParam("opt_fields", "custom_fields,custom_fields.name,custom_fields.type,custom_fields.display_value,custom_fields.enum_value,custom_fields.enum_value.name,custom_fields.multi_enum_values,custom_fields.multi_enum_values.name,custom_fields.text_value,custom_fields.number_value")
+                            .build(taskGid))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .bodyToMono(AsanaTaskResponse.class)
+                    .block();
+
+            if (response == null || response.getData() == null
+                    || response.getData().getCustomFields() == null) {
+                log.warn("No custom fields found for task: {}", taskGid);
+                return Collections.emptyList();
+            }
+
+            List<AsanaCustomField> fields = response.getData().getCustomFields();
+            log.info("Found {} custom fields for task: {}", fields.size(), taskGid);
+            return fields;
+        } catch (Exception e) {
+            log.warn("Failed to fetch custom fields for task: {} - {}", taskGid, e.getMessage());
             return Collections.emptyList();
         }
     }

@@ -2,6 +2,7 @@ package com.baker.integration.asana.controller;
 
 import com.baker.integration.asana.config.AsanaAppProperties;
 import com.baker.integration.asana.model.asana.AsanaAttachment;
+import com.baker.integration.asana.model.asana.AsanaCustomField;
 import com.baker.integration.asana.model.asana.AsanaSubmitRequest;
 import com.baker.integration.asana.model.asana.AsanaTag;
 import com.baker.integration.asana.service.AsanaApiService;
@@ -85,8 +86,9 @@ public class AsanaFormController {
         String accessToken = asanaAppProperties.getPersonalAccessToken();
         List<AsanaAttachment> attachments = asanaApiService.getTaskAttachments(task, accessToken);
         List<AsanaTag> tags = asanaApiService.getTaskTags(task, accessToken);
+        List<AsanaCustomField> customFields = asanaApiService.getTaskCustomFields(task, accessToken);
 
-        Map<String, Object> formResponse = buildFormMetadata(attachments, tags);
+        Map<String, Object> formResponse = buildFormMetadata(attachments, tags, customFields);
         return ResponseEntity.ok(formResponse);
     }
 
@@ -121,12 +123,31 @@ public class AsanaFormController {
                         "This may take a few minutes depending on file sizes."));
     }
 
-    private Map<String, Object> buildFormMetadata(List<AsanaAttachment> attachments, List<AsanaTag> tags) {
+    private Map<String, Object> buildFormMetadata(List<AsanaAttachment> attachments,
+                                                    List<AsanaTag> tags,
+                                                    List<AsanaCustomField> customFields) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("title", "Send Attachments to Lytho");
         metadata.put("on_submit_callback", "/asana/on-submit");
 
         List<Map<String, Object>> fields = new ArrayList<>();
+
+        // Custom fields section
+        if (!customFields.isEmpty()) {
+            List<AsanaCustomField> fieldsWithValues = customFields.stream()
+                    .filter(cf -> cf.getDisplayValue() != null && !cf.getDisplayValue().isEmpty())
+                    .toList();
+
+            if (!fieldsWithValues.isEmpty()) {
+                for (AsanaCustomField cf : fieldsWithValues) {
+                    Map<String, Object> cfField = new LinkedHashMap<>();
+                    cfField.put("type", "static_text");
+                    cfField.put("id", "custom_field_" + cf.getGid());
+                    cfField.put("name", cf.getName() + ": " + cf.getDisplayValue());
+                    fields.add(cfField);
+                }
+            }
+        }
 
         // Tags section
         if (!tags.isEmpty()) {
