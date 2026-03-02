@@ -37,6 +37,12 @@ public class AsanaFormController {
         this.uploadOrchestrator = uploadOrchestrator;
     }
 
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        log.info("Health check hit");
+        return ResponseEntity.ok(Map.of("status", "ok", "version", "debug-v2"));
+    }
+
     @GetMapping("/form-metadata")
     public ResponseEntity<Map<String, Object>> getFormMetadata(
             @RequestParam String task,
