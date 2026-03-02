@@ -4,6 +4,8 @@ import com.baker.integration.asana.exception.AsanaApiException;
 import com.baker.integration.asana.model.asana.AsanaAttachment;
 import com.baker.integration.asana.model.asana.AsanaAttachmentDetailResponse;
 import com.baker.integration.asana.model.asana.AsanaAttachmentListResponse;
+import com.baker.integration.asana.model.asana.AsanaTag;
+import com.baker.integration.asana.model.asana.AsanaTagListResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -50,6 +52,31 @@ public class AsanaApiService {
             return attachments;
         } catch (Exception e) {
             throw new AsanaApiException("Failed to fetch attachments for task: " + taskGid, e);
+        }
+    }
+
+    public List<AsanaTag> getTaskTags(String taskGid, String accessToken) {
+        try {
+            AsanaTagListResponse response = asanaWebClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/tasks/{taskGid}/tags")
+                            .queryParam("opt_fields", "gid,name,color")
+                            .build(taskGid))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .bodyToMono(AsanaTagListResponse.class)
+                    .block();
+
+            if (response == null || response.getData() == null) {
+                log.warn("No tags found for task: {}", taskGid);
+                return Collections.emptyList();
+            }
+
+            log.info("Found {} tags for task: {}", response.getData().size(), taskGid);
+            return response.getData();
+        } catch (Exception e) {
+            log.warn("Failed to fetch tags for task: {} - {}", taskGid, e.getMessage());
+            return Collections.emptyList();
         }
     }
 

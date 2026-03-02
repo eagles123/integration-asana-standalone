@@ -3,6 +3,7 @@ package com.baker.integration.asana.controller;
 import com.baker.integration.asana.config.AsanaAppProperties;
 import com.baker.integration.asana.model.asana.AsanaAttachment;
 import com.baker.integration.asana.model.asana.AsanaSubmitRequest;
+import com.baker.integration.asana.model.asana.AsanaTag;
 import com.baker.integration.asana.service.AsanaApiService;
 import com.baker.integration.asana.service.AsanaSignatureVerificationService;
 import com.baker.integration.asana.service.AttachmentUploadOrchestrator;
@@ -83,8 +84,9 @@ public class AsanaFormController {
         // String accessToken = paragonTokenService.getAsanaToken(user);
         String accessToken = asanaAppProperties.getPersonalAccessToken();
         List<AsanaAttachment> attachments = asanaApiService.getTaskAttachments(task, accessToken);
+        List<AsanaTag> tags = asanaApiService.getTaskTags(task, accessToken);
 
-        Map<String, Object> formResponse = buildFormMetadata(attachments);
+        Map<String, Object> formResponse = buildFormMetadata(attachments, tags);
         return ResponseEntity.ok(formResponse);
     }
 
@@ -119,24 +121,41 @@ public class AsanaFormController {
                         "This may take a few minutes depending on file sizes."));
     }
 
-    private Map<String, Object> buildFormMetadata(List<AsanaAttachment> attachments) {
+    private Map<String, Object> buildFormMetadata(List<AsanaAttachment> attachments, List<AsanaTag> tags) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("title", "Send Attachments to Lytho");
-        metadata.put("submit_button_text", "Upload to Lytho");
         metadata.put("on_submit_callback", "/asana/on-submit");
 
+        List<Map<String, Object>> fields = new ArrayList<>();
+
+        // Tags section
+        if (!tags.isEmpty()) {
+            String tagNames = tags.stream()
+                    .map(AsanaTag::getName)
+                    .collect(Collectors.joining(", "));
+            Map<String, Object> tagsField = new LinkedHashMap<>();
+            tagsField.put("type", "static_text");
+            tagsField.put("id", "task_tags");
+            tagsField.put("name", "Tags: " + tagNames);
+            fields.add(tagsField);
+        }
+
+        // Attachments section
         if (attachments.isEmpty()) {
             Map<String, Object> infoField = new LinkedHashMap<>();
             infoField.put("type", "static_text");
             infoField.put("id", "no_attachments_info");
             infoField.put("name", "This task has no downloadable attachments.");
-            metadata.put("fields", List.of(infoField));
+            fields.add(infoField);
         } else {
             List<Map<String, String>> options = attachments.stream()
                     .map(a -> {
                         Map<String, String> option = new LinkedHashMap<>();
                         option.put("id", a.getGid());
                         String label = a.getName();
+                        if (a.getContentType() != null) {
+                            label += " [" + a.getContentType() + "]";
+                        }
                         if (a.getSize() != null) {
                             label += " (" + formatFileSize(a.getSize()) + ")";
                         }
@@ -151,9 +170,10 @@ public class AsanaFormController {
             selectField.put("name", "Select attachments to upload");
             selectField.put("is_required", true);
             selectField.put("options", options);
-
-            metadata.put("fields", List.of(selectField));
+            fields.add(selectField);
         }
+
+        metadata.put("fields", fields);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("template", "form_metadata_v0");
