@@ -45,6 +45,13 @@ public class AsanaFormController {
             @RequestHeader("x-asana-request-signature") String signature,
             HttpServletRequest request) {
 
+        log.info("=== FORM-METADATA REQUEST RECEIVED ===");
+        log.info("Request URL: {}", request.getRequestURL());
+        log.info("Query String: {}", request.getQueryString());
+        log.info("Signature Header: {}", signature);
+        log.info("X-Forwarded-Proto: {}", request.getHeader("X-Forwarded-Proto"));
+        log.info("X-Forwarded-Host: {}", request.getHeader("X-Forwarded-Host"));
+
         String fullUrl = request.getRequestURL().toString();
         if (request.getQueryString() != null) {
             fullUrl += "?" + request.getQueryString();
