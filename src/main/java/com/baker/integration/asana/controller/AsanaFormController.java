@@ -75,10 +75,12 @@ public class AsanaFormController {
 
         log.info("Form metadata requested for task: {}, user: {}", task, user);
 
-        String accessToken = paragonTokenService.getAsanaToken(user);
-        List<AsanaAttachment> attachments = asanaApiService.getTaskAttachments(task, accessToken);
+        // TODO: Re-enable Paragon + Asana API calls once env vars are configured
+        // String accessToken = paragonTokenService.getAsanaToken(user);
+        // List<AsanaAttachment> attachments = asanaApiService.getTaskAttachments(task, accessToken);
+        // Map<String, Object> formResponse = buildFormMetadata(attachments);
 
-        Map<String, Object> formResponse = buildFormMetadata(attachments);
+        Map<String, Object> formResponse = buildFormMetadata(List.of());
         return ResponseEntity.ok(formResponse);
     }
 
