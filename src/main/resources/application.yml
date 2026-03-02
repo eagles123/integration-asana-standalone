@@ -5,6 +5,7 @@ server:
 asana:
   client-secret: ${ASANA_CLIENT_SECRET:}
   api-base-url: https://app.asana.com/api/1.0
+  personal-access-token: ${ASANA_PAT:}
 
 paragon:
   api-base-url: https://api.useparagon.com

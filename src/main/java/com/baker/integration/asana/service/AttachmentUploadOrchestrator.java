@@ -1,5 +1,6 @@
 package com.baker.integration.asana.service;
 
+import com.baker.integration.asana.config.AsanaAppProperties;
 import com.baker.integration.asana.model.asana.AsanaAttachment;
 import com.baker.integration.asana.model.assets.AssetResponse;
 import com.baker.integration.asana.model.assets.UploadLinkResponse;
@@ -17,16 +18,19 @@ public class AttachmentUploadOrchestrator {
 
     private static final Logger log = LoggerFactory.getLogger(AttachmentUploadOrchestrator.class);
 
-    private final ParagonTokenService paragonTokenService;
+    // private final ParagonTokenService paragonTokenService;
+    private final AsanaAppProperties asanaAppProperties;
     private final AsanaApiService asanaApiService;
     private final ServiceAssetsClient serviceAssetsClient;
     private final FileTransferService fileTransferService;
 
-    public AttachmentUploadOrchestrator(ParagonTokenService paragonTokenService,
+    public AttachmentUploadOrchestrator(// ParagonTokenService paragonTokenService,
+                                       AsanaAppProperties asanaAppProperties,
                                        AsanaApiService asanaApiService,
                                        ServiceAssetsClient serviceAssetsClient,
                                        FileTransferService fileTransferService) {
-        this.paragonTokenService = paragonTokenService;
+        // this.paragonTokenService = paragonTokenService;
+        this.asanaAppProperties = asanaAppProperties;
         this.asanaApiService = asanaApiService;
         this.serviceAssetsClient = serviceAssetsClient;
         this.fileTransferService = fileTransferService;
@@ -37,7 +41,9 @@ public class AttachmentUploadOrchestrator {
                                                                 List<String> attachmentGids) {
         log.info("Starting async upload of {} attachments from task: {}", attachmentGids.size(), taskGid);
 
-        String accessToken = paragonTokenService.getAsanaToken(asanaUserId);
+        // Use PAT directly instead of Paragon OAuth
+        // String accessToken = paragonTokenService.getAsanaToken(asanaUserId);
+        String accessToken = asanaAppProperties.getPersonalAccessToken();
         List<AssetResponse> results = new ArrayList<>();
 
         for (String attachmentGid : attachmentGids) {

@@ -1,11 +1,12 @@
 package com.baker.integration.asana.controller;
 
+import com.baker.integration.asana.config.AsanaAppProperties;
 import com.baker.integration.asana.model.asana.AsanaAttachment;
 import com.baker.integration.asana.model.asana.AsanaSubmitRequest;
 import com.baker.integration.asana.service.AsanaApiService;
 import com.baker.integration.asana.service.AsanaSignatureVerificationService;
 import com.baker.integration.asana.service.AttachmentUploadOrchestrator;
-import com.baker.integration.asana.service.ParagonTokenService;
+// import com.baker.integration.asana.service.ParagonTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,16 +24,19 @@ public class AsanaFormController {
     private static final Logger log = LoggerFactory.getLogger(AsanaFormController.class);
 
     private final AsanaSignatureVerificationService signatureService;
-    private final ParagonTokenService paragonTokenService;
+    // private final ParagonTokenService paragonTokenService;
+    private final AsanaAppProperties asanaAppProperties;
     private final AsanaApiService asanaApiService;
     private final AttachmentUploadOrchestrator uploadOrchestrator;
 
     public AsanaFormController(AsanaSignatureVerificationService signatureService,
-                               ParagonTokenService paragonTokenService,
+                               // ParagonTokenService paragonTokenService,
+                               AsanaAppProperties asanaAppProperties,
                                AsanaApiService asanaApiService,
                                AttachmentUploadOrchestrator uploadOrchestrator) {
         this.signatureService = signatureService;
-        this.paragonTokenService = paragonTokenService;
+        // this.paragonTokenService = paragonTokenService;
+        this.asanaAppProperties = asanaAppProperties;
         this.asanaApiService = asanaApiService;
         this.uploadOrchestrator = uploadOrchestrator;
     }
@@ -75,7 +79,9 @@ public class AsanaFormController {
 
         log.info("Form metadata requested for task: {}, user: {}", task, user);
 
-        String accessToken = paragonTokenService.getAsanaToken(user);
+        // Use PAT directly instead of Paragon OAuth
+        // String accessToken = paragonTokenService.getAsanaToken(user);
+        String accessToken = asanaAppProperties.getPersonalAccessToken();
         List<AsanaAttachment> attachments = asanaApiService.getTaskAttachments(task, accessToken);
 
         Map<String, Object> formResponse = buildFormMetadata(attachments);
