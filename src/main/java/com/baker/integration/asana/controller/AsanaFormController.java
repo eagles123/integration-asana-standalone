@@ -8,7 +8,6 @@ import com.baker.integration.asana.model.asana.AsanaTag;
 import com.baker.integration.asana.service.AsanaApiService;
 import com.baker.integration.asana.service.AsanaSignatureVerificationService;
 import com.baker.integration.asana.service.AttachmentUploadOrchestrator;
-import com.baker.integration.asana.service.DamTokenStore;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,18 +26,15 @@ public class AsanaFormController {
 
     private final AsanaSignatureVerificationService signatureService;
     private final AsanaAppProperties asanaAppProperties;
-    private final DamTokenStore damTokenStore;
     private final AsanaApiService asanaApiService;
     private final AttachmentUploadOrchestrator uploadOrchestrator;
 
     public AsanaFormController(AsanaSignatureVerificationService signatureService,
                                AsanaAppProperties asanaAppProperties,
-                               DamTokenStore damTokenStore,
                                AsanaApiService asanaApiService,
                                AttachmentUploadOrchestrator uploadOrchestrator) {
         this.signatureService = signatureService;
         this.asanaAppProperties = asanaAppProperties;
-        this.damTokenStore = damTokenStore;
         this.asanaApiService = asanaApiService;
         this.uploadOrchestrator = uploadOrchestrator;
     }
@@ -46,7 +42,7 @@ public class AsanaFormController {
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
         log.info("Health check hit");
-        return ResponseEntity.ok(Map.of("status", "ok", "version", "debug-v2"));
+        return ResponseEntity.ok(Map.of("status", "ok", "version", "v3"));
     }
 
     @GetMapping("/widget")
@@ -60,14 +56,11 @@ public class AsanaFormController {
         String queryString = request.getQueryString() != null ? request.getQueryString() : "";
         signatureService.verifyGetRequest(queryString, signature);
 
-        log.info("Widget requested for task: {}, resource_url: {}", task, resourceUrl);
+        log.info("Widget requested for task: {}", task);
 
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("title", "Lytho DAM");
-        metadata.put("subtitle", resourceUrl != null && resourceUrl.contains("/auth/lytho/login")
-                ? "Click to log in to Lytho DAM"
-                : "Lytho DAM Integration");
-        metadata.put("subicon_url", "https://app.asana.com/assets/integrations/lytho.png");
+        metadata.put("subtitle", "Lytho DAM Integration");
         metadata.put("fields", List.of());
 
         Map<String, Object> response = new LinkedHashMap<>();
@@ -84,30 +77,19 @@ public class AsanaFormController {
             @RequestHeader("x-asana-request-signature") String signature,
             HttpServletRequest request) {
 
-        log.info("=== FORM-METADATA REQUEST RECEIVED ===");
-        log.info("Request URL: {}", request.getRequestURL());
-        log.info("Query String: {}", request.getQueryString());
-        log.info("Signature Header: {}", signature);
-        log.info("X-Forwarded-Proto: {}", request.getHeader("X-Forwarded-Proto"));
-        log.info("X-Forwarded-Host: {}", request.getHeader("X-Forwarded-Host"));
-
         String queryString = request.getQueryString() != null ? request.getQueryString() : "";
         signatureService.verifyGetRequest(queryString, signature);
 
         log.info("Form metadata requested for task: {}, user: {}", task, user);
 
-        String baseUrl = getBaseUrl(request);
-
-        if (!damTokenStore.hasValidToken(user)) {
-            return ResponseEntity.ok(buildTenantInputForm(baseUrl));
-        }
-
-        String accessToken = asanaAppProperties.getPat();
+        String accessToken = asanaAppProperties.getPersonalAccessToken();
+        String userEmail = asanaApiService.getUserEmail(user, accessToken);
         List<AsanaAttachment> attachments = asanaApiService.getTaskAttachments(task, accessToken);
         List<AsanaTag> tags = asanaApiService.getTaskTags(task, accessToken);
         List<AsanaCustomField> customFields = asanaApiService.getTaskCustomFields(task, accessToken);
 
-        Map<String, Object> formResponse = buildFormMetadata(baseUrl, attachments, tags, customFields);
+        String baseUrl = getBaseUrl(request);
+        Map<String, Object> formResponse = buildFormMetadata(baseUrl, userEmail, attachments, tags, customFields);
         return ResponseEntity.ok(formResponse);
     }
 
@@ -122,32 +104,11 @@ public class AsanaFormController {
 
         // Asana sends data as a JSON-encoded string and signs the unescaped string value
         String dataJson = root.get("data").asText();
-        log.info("POST signature verification - data string: {}", dataJson);
-
         signatureService.verifyPostRequest(dataJson, signature);
 
         AsanaSubmitRequest submitRequest = mapper.readValue(dataJson, AsanaSubmitRequest.class);
 
         log.info("Form submitted for task: {}, user: {}", submitRequest.getTask(), submitRequest.getUser());
-
-        // Handle tenant login form submission
-        String lythoTenant = extractStringValue(submitRequest.getValues(), "lytho_tenant");
-        if (lythoTenant != null && !lythoTenant.isBlank()) {
-            String state = damTokenStore.createLoginState(
-                    submitRequest.getUser(), submitRequest.getWorkspace(), lythoTenant.trim());
-            String baseUrl = getBaseUrl(request);
-            String loginUrl = baseUrl + "/auth/lytho/login?state=" + state;
-            return ResponseEntity.ok(buildAttachedResource(
-                    "Login to Lytho DAM", loginUrl));
-        }
-
-        if (!damTokenStore.hasValidToken(submitRequest.getUser())) {
-            return ResponseEntity.ok(buildAttachedResource(
-                    "Session Expired - Login to Lytho DAM",
-                    getBaseUrl(request) + "/auth/lytho/login?state=" +
-                            damTokenStore.createLoginState(submitRequest.getUser(),
-                                    submitRequest.getWorkspace(), "qaorange")));
-        }
 
         List<String> selectedAttachments = extractSelectedAttachments(submitRequest.getValues());
 
@@ -156,10 +117,15 @@ public class AsanaFormController {
                     "No attachments selected", "https://app.asana.com"));
         }
 
+        // Fetch user email for DAM user lookup
+        String accessToken = asanaAppProperties.getPersonalAccessToken();
+        String userEmail = asanaApiService.getUserEmail(submitRequest.getUser(), accessToken);
+        log.info("Submitting upload for user email: {}", userEmail);
+
         uploadOrchestrator.processAsync(
                 submitRequest.getTask(),
                 submitRequest.getUser(),
-                submitRequest.getWorkspace(),
+                userEmail,
                 selectedAttachments
         );
 
@@ -169,6 +135,7 @@ public class AsanaFormController {
     }
 
     private Map<String, Object> buildFormMetadata(String baseUrl,
+                                                    String userEmail,
                                                     List<AsanaAttachment> attachments,
                                                     List<AsanaTag> tags,
                                                     List<AsanaCustomField> customFields) {
@@ -177,6 +144,15 @@ public class AsanaFormController {
         metadata.put("on_submit_callback", baseUrl + "/asana/on-submit");
 
         List<Map<String, Object>> fields = new ArrayList<>();
+
+        // User email display
+        if (userEmail != null && !userEmail.isBlank()) {
+            Map<String, Object> emailField = new LinkedHashMap<>();
+            emailField.put("type", "static_text");
+            emailField.put("id", "user_email_info");
+            emailField.put("name", "User: " + userEmail);
+            fields.add(emailField);
+        }
 
         // Custom fields section
         if (!customFields.isEmpty()) {
@@ -265,35 +241,6 @@ public class AsanaFormController {
         return response;
     }
 
-    private Map<String, Object> buildTenantInputForm(String baseUrl) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("title", "Connect to Lytho DAM");
-        metadata.put("on_submit_callback", baseUrl + "/asana/on-submit");
-
-        List<Map<String, Object>> fields = new ArrayList<>();
-
-        Map<String, Object> infoField = new LinkedHashMap<>();
-        infoField.put("type", "static_text");
-        infoField.put("id", "login_info");
-        infoField.put("name", "Enter your Lytho tenant name to connect (e.g. \"qaorange\").");
-        fields.add(infoField);
-
-        Map<String, Object> tenantField = new LinkedHashMap<>();
-        tenantField.put("type", "single_line_text");
-        tenantField.put("id", "lytho_tenant");
-        tenantField.put("name", "Lytho Tenant");
-        tenantField.put("is_required", true);
-        tenantField.put("placeholder", "your-tenant-name");
-        fields.add(tenantField);
-
-        metadata.put("fields", fields);
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("template", "form_metadata_v0");
-        response.put("metadata", metadata);
-        return response;
-    }
-
     private Map<String, Object> buildAttachedResource(String name, String url) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("resource_name", name);
@@ -309,12 +256,6 @@ public class AsanaFormController {
             return scheme + "://" + host;
         }
         return scheme + "://" + host + ":" + port;
-    }
-
-    private String extractStringValue(Map<String, Object> values, String key) {
-        if (values == null) return null;
-        Object value = values.get(key);
-        return value != null ? value.toString() : null;
     }
 
     @SuppressWarnings("unchecked")

@@ -5,7 +5,6 @@ import com.baker.integration.asana.model.assets.AssetResponse;
 import com.baker.integration.asana.model.assets.UploadCompletedRequest;
 import com.baker.integration.asana.model.assets.UploadLinkRequest;
 import com.baker.integration.asana.model.assets.UploadLinkResponse;
-import com.baker.integration.asana.model.integration.IntegrationIdentity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,14 +22,14 @@ public class ServiceAssetsClient {
         this.serviceAssetsWebClient = serviceAssetsWebClient;
     }
 
-    public UploadLinkResponse getUploadLink(String fileName, String contentType,
-                                               IntegrationIdentity identity, String damAccessToken) {
+    public UploadLinkResponse getUploadLink(String fileName, String contentType, String userEmail) {
         try {
             UploadLinkResponse response = serviceAssetsWebClient.put()
                     .uri("/integration/assets/upload/link")
                     .headers(headers -> {
-                        withIdentityHeaders(headers, identity);
-                        headers.setBearerAuth(damAccessToken);
+                        if (userEmail != null) {
+                            headers.set("X-User-Email", userEmail);
+                        }
                     })
                     .bodyValue(new UploadLinkRequest(fileName, contentType))
                     .retrieve()
@@ -50,13 +49,14 @@ public class ServiceAssetsClient {
         }
     }
 
-    public AssetResponse finalizeUpload(String objectKey, IntegrationIdentity identity, String damAccessToken) {
+    public AssetResponse finalizeUpload(String objectKey, String userEmail) {
         try {
             AssetResponse response = serviceAssetsWebClient.post()
                     .uri("/integration/assets/upload/link/upload-completed")
                     .headers(headers -> {
-                        withIdentityHeaders(headers, identity);
-                        headers.setBearerAuth(damAccessToken);
+                        if (userEmail != null) {
+                            headers.set("X-User-Email", userEmail);
+                        }
                     })
                     .bodyValue(new UploadCompletedRequest(objectKey))
                     .retrieve()
@@ -74,12 +74,5 @@ public class ServiceAssetsClient {
         } catch (Exception e) {
             throw new FileTransferException("Failed to finalize upload for key: " + objectKey, e);
         }
-    }
-
-    private void withIdentityHeaders(org.springframework.http.HttpHeaders headers, IntegrationIdentity identity) {
-        headers.set("X-Tenant-Id", identity.getTenantId());
-        headers.set("X-DAM-User-Id", identity.getDamUserId());
-        headers.set("X-Asana-User-Id", identity.getAsanaUserId());
-        headers.set("X-Asana-Workspace-Id", identity.getAsanaWorkspaceId());
     }
 }

@@ -9,12 +9,12 @@ public class AsanaAppProperties {
 
     private String clientSecret;
     private String apiBaseUrl = "https://app.asana.com/api/1.0";
-    private String pat;
+    private String personalAccessToken;
 
     public String getClientSecret() { return clientSecret; }
     public void setClientSecret(String clientSecret) { this.clientSecret = clientSecret; }
     public String getApiBaseUrl() { return apiBaseUrl; }
     public void setApiBaseUrl(String apiBaseUrl) { this.apiBaseUrl = apiBaseUrl; }
-    public String getPat() { return pat; }
-    public void setPat(String pat) { this.pat = pat; }
+    public String getPersonalAccessToken() { return personalAccessToken; }
+    public void setPersonalAccessToken(String personalAccessToken) { this.personalAccessToken = personalAccessToken; }
 }

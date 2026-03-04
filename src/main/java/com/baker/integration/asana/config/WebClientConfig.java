@@ -19,13 +19,6 @@ public class WebClientConfig {
                 .build();
     }
 
-    @Bean("keycloakWebClient")
-    public WebClient keycloakWebClient(KeycloakProperties keycloakProperties) {
-        return WebClient.builder()
-                .baseUrl(keycloakProperties.getBaseUrl())
-                .build();
-    }
-
     @Bean("serviceAssetsWebClient")
     public WebClient serviceAssetsWebClient(ServiceAssetsProperties serviceAssetsProperties) {
         return WebClient.builder()

@@ -16,6 +16,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AsanaApiService {
@@ -106,6 +107,33 @@ public class AsanaApiService {
         } catch (Exception e) {
             log.warn("Failed to fetch custom fields for task: {} - {}", taskGid, e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public String getUserEmail(String userGid, String accessToken) {
+        try {
+            Map<String, Object> response = asanaWebClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/users/{userGid}")
+                            .queryParam("opt_fields", "email")
+                            .build(userGid))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+
+            if (response != null && response.get("data") instanceof Map) {
+                Map<String, Object> data = (Map<String, Object>) response.get("data");
+                String email = (String) data.get("email");
+                log.info("Fetched email for user {}: {}", userGid, email);
+                return email;
+            }
+            log.warn("No email found for user: {}", userGid);
+            return null;
+        } catch (Exception e) {
+            log.warn("Failed to fetch email for user: {} - {}", userGid, e.getMessage());
+            return null;
         }
     }
 

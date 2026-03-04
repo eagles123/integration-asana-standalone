@@ -21,13 +21,6 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", "Invalid request signature"));
     }
 
-    @ExceptionHandler(DamAuthenticationRequiredException.class)
-    public ResponseEntity<Map<String, String>> handleDamAuthRequired(DamAuthenticationRequiredException e) {
-        log.warn("DAM authentication required: {}", e.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("error", "User not authenticated with Lytho DAM"));
-    }
-
     @ExceptionHandler(AsanaApiException.class)
     public ResponseEntity<Map<String, String>> handleAsanaApiException(AsanaApiException e) {
         log.error("Asana API error: {}", e.getMessage(), e);
