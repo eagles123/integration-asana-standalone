@@ -90,10 +90,16 @@ public class AsanaFormController {
             @RequestHeader("x-asana-request-signature") String signature,
             HttpServletRequest request) throws IOException {
 
-        signatureService.verifyPostRequest(rawBody, signature);
-
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        AsanaSubmitRequest submitRequest = mapper.readValue(rawBody, AsanaSubmitRequest.class);
+        com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(rawBody);
+
+        // Asana signs the JSON string of the "data" field, not the entire body
+        String dataJson = root.has("data") ? root.get("data").toString() : rawBody;
+        log.info("POST signature verification - data JSON: {}", dataJson);
+
+        signatureService.verifyPostRequest(dataJson, signature);
+
+        AsanaSubmitRequest submitRequest = mapper.treeToValue(root.get("data"), AsanaSubmitRequest.class);
 
         log.info("Form submitted for task: {}, user: {}", submitRequest.getTask(), submitRequest.getUser());
 
