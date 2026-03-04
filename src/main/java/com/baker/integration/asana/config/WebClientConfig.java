@@ -19,10 +19,10 @@ public class WebClientConfig {
                 .build();
     }
 
-    @Bean("paragonWebClient")
-    public WebClient paragonWebClient(ParagonProperties paragonProperties) {
+    @Bean("keycloakWebClient")
+    public WebClient keycloakWebClient(KeycloakProperties keycloakProperties) {
         return WebClient.builder()
-                .baseUrl(paragonProperties.getApiBaseUrl())
+                .baseUrl(keycloakProperties.getBaseUrl())
                 .build();
     }
 

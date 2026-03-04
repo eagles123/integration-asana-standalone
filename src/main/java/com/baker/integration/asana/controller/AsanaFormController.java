@@ -8,7 +8,7 @@ import com.baker.integration.asana.model.asana.AsanaTag;
 import com.baker.integration.asana.service.AsanaApiService;
 import com.baker.integration.asana.service.AsanaSignatureVerificationService;
 import com.baker.integration.asana.service.AttachmentUploadOrchestrator;
-// import com.baker.integration.asana.service.ParagonTokenService;
+import com.baker.integration.asana.service.DamTokenStore;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,19 +26,19 @@ public class AsanaFormController {
     private static final Logger log = LoggerFactory.getLogger(AsanaFormController.class);
 
     private final AsanaSignatureVerificationService signatureService;
-    // private final ParagonTokenService paragonTokenService;
     private final AsanaAppProperties asanaAppProperties;
+    private final DamTokenStore damTokenStore;
     private final AsanaApiService asanaApiService;
     private final AttachmentUploadOrchestrator uploadOrchestrator;
 
     public AsanaFormController(AsanaSignatureVerificationService signatureService,
-                               // ParagonTokenService paragonTokenService,
                                AsanaAppProperties asanaAppProperties,
+                               DamTokenStore damTokenStore,
                                AsanaApiService asanaApiService,
                                AttachmentUploadOrchestrator uploadOrchestrator) {
         this.signatureService = signatureService;
-        // this.paragonTokenService = paragonTokenService;
         this.asanaAppProperties = asanaAppProperties;
+        this.damTokenStore = damTokenStore;
         this.asanaApiService = asanaApiService;
         this.uploadOrchestrator = uploadOrchestrator;
     }
@@ -54,7 +54,7 @@ public class AsanaFormController {
             @RequestParam String task,
             @RequestParam String user,
             @RequestParam String workspace,
-            @RequestHeader(value = "x-asana-request-signature", required = false) String signature,
+            @RequestHeader("x-asana-request-signature") String signature,
             HttpServletRequest request) {
 
         log.info("=== FORM-METADATA REQUEST RECEIVED ===");
@@ -64,26 +64,19 @@ public class AsanaFormController {
         log.info("X-Forwarded-Proto: {}", request.getHeader("X-Forwarded-Proto"));
         log.info("X-Forwarded-Host: {}", request.getHeader("X-Forwarded-Host"));
 
-        // TEMPORARY: Skip signature verification for debugging
-        if (signature != null) {
-            String fullUrl = request.getRequestURL().toString();
-            if (request.getQueryString() != null) {
-                fullUrl += "?" + request.getQueryString();
-            }
-            try {
-                signatureService.verifyGetRequest(fullUrl, signature);
-            } catch (Exception e) {
-                log.warn("Signature verification failed (bypassed for debugging): {}", e.getMessage());
-            }
-        } else {
-            log.warn("No signature header present");
+        String fullUrl = request.getRequestURL().toString();
+        if (request.getQueryString() != null) {
+            fullUrl += "?" + request.getQueryString();
         }
+        signatureService.verifyGetRequest(fullUrl, signature);
 
         log.info("Form metadata requested for task: {}, user: {}", task, user);
 
-        // Use PAT directly instead of Paragon OAuth
-        // String accessToken = paragonTokenService.getAsanaToken(user);
-        String accessToken = asanaAppProperties.getPersonalAccessToken();
+        if (!damTokenStore.hasValidToken(user)) {
+            return ResponseEntity.ok(buildTenantInputForm());
+        }
+
+        String accessToken = asanaAppProperties.getPat();
         List<AsanaAttachment> attachments = asanaApiService.getTaskAttachments(task, accessToken);
         List<AsanaTag> tags = asanaApiService.getTaskTags(task, accessToken);
         List<AsanaCustomField> customFields = asanaApiService.getTaskCustomFields(task, accessToken);
@@ -105,6 +98,21 @@ public class AsanaFormController {
 
         log.info("Form submitted for task: {}, user: {}", submitRequest.getTask(), submitRequest.getUser());
 
+        // Handle tenant login form submission
+        String lythoTenant = extractStringValue(submitRequest.getValues(), "lytho_tenant");
+        if (lythoTenant != null && !lythoTenant.isBlank()) {
+            String state = damTokenStore.createLoginState(
+                    submitRequest.getUser(), submitRequest.getWorkspace(), lythoTenant.trim());
+            String baseUrl = getBaseUrl(request);
+            String loginUrl = baseUrl + "/auth/lytho/login?state=" + state;
+            return ResponseEntity.ok(buildLoginLinkForm(loginUrl));
+        }
+
+        if (!damTokenStore.hasValidToken(submitRequest.getUser())) {
+            return ResponseEntity.ok(buildMessageResponse("Not Connected",
+                    "Your Lytho DAM session has expired. Please close this dialog and re-open it to log in again."));
+        }
+
         List<String> selectedAttachments = extractSelectedAttachments(submitRequest.getValues());
 
         if (selectedAttachments.isEmpty()) {
@@ -115,6 +123,7 @@ public class AsanaFormController {
         uploadOrchestrator.processAsync(
                 submitRequest.getTask(),
                 submitRequest.getUser(),
+                submitRequest.getWorkspace(),
                 selectedAttachments
         );
 
@@ -219,6 +228,56 @@ public class AsanaFormController {
         return response;
     }
 
+    private Map<String, Object> buildTenantInputForm() {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("title", "Connect to Lytho DAM");
+        metadata.put("on_submit_callback", "/asana/on-submit");
+
+        List<Map<String, Object>> fields = new ArrayList<>();
+
+        Map<String, Object> infoField = new LinkedHashMap<>();
+        infoField.put("type", "static_text");
+        infoField.put("id", "login_info");
+        infoField.put("name", "Enter your Lytho tenant name to connect (e.g. \"qaorange\").");
+        fields.add(infoField);
+
+        Map<String, Object> tenantField = new LinkedHashMap<>();
+        tenantField.put("type", "single_line_text");
+        tenantField.put("id", "lytho_tenant");
+        tenantField.put("name", "Lytho Tenant");
+        tenantField.put("is_required", true);
+        tenantField.put("placeholder", "your-tenant-name");
+        fields.add(tenantField);
+
+        metadata.put("fields", fields);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("template", "form_metadata_v0");
+        response.put("metadata", metadata);
+        return response;
+    }
+
+    private Map<String, Object> buildLoginLinkForm(String loginUrl) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("title", "Log in to Lytho");
+
+        List<Map<String, Object>> fields = new ArrayList<>();
+
+        Map<String, Object> infoField = new LinkedHashMap<>();
+        infoField.put("type", "static_text");
+        infoField.put("id", "login_link");
+        infoField.put("name", "Open this link in a new tab to log in:\n\n" + loginUrl
+                + "\n\nAfter logging in, close this dialog and re-open it.");
+        fields.add(infoField);
+
+        metadata.put("fields", fields);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("template", "form_metadata_v0");
+        response.put("metadata", metadata);
+        return response;
+    }
+
     private Map<String, Object> buildMessageResponse(String title, String message) {
         Map<String, Object> field = new LinkedHashMap<>();
         field.put("type", "static_text");
@@ -233,6 +292,22 @@ public class AsanaFormController {
         response.put("template", "form_metadata_v0");
         response.put("metadata", metadata);
         return response;
+    }
+
+    private String getBaseUrl(HttpServletRequest request) {
+        String scheme = request.getScheme();
+        String host = request.getServerName();
+        int port = request.getServerPort();
+        if ((scheme.equals("http") && port == 80) || (scheme.equals("https") && port == 443)) {
+            return scheme + "://" + host;
+        }
+        return scheme + "://" + host + ":" + port;
+    }
+
+    private String extractStringValue(Map<String, Object> values, String key) {
+        if (values == null) return null;
+        Object value = values.get(key);
+        return value != null ? value.toString() : null;
     }
 
     @SuppressWarnings("unchecked")

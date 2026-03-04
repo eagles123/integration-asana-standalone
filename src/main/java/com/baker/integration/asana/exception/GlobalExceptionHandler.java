@@ -21,6 +21,13 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", "Invalid request signature"));
     }
 
+    @ExceptionHandler(DamAuthenticationRequiredException.class)
+    public ResponseEntity<Map<String, String>> handleDamAuthRequired(DamAuthenticationRequiredException e) {
+        log.warn("DAM authentication required: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "User not authenticated with Lytho DAM"));
+    }
+
     @ExceptionHandler(AsanaApiException.class)
     public ResponseEntity<Map<String, String>> handleAsanaApiException(AsanaApiException e) {
         log.error("Asana API error: {}", e.getMessage(), e);
@@ -33,6 +40,13 @@ public class GlobalExceptionHandler {
         log.error("File transfer error: {}", e.getMessage(), e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "File transfer failed"));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.warn("Invalid integration request: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", e.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
