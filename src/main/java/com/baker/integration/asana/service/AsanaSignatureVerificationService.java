@@ -24,11 +24,11 @@ public class AsanaSignatureVerificationService {
         this.asanaAppProperties = asanaAppProperties;
     }
 
-    public void verifyGetRequest(String fullUrl, String signatureHeader) {
-        log.info("Signature verification - Full URL: {}", fullUrl);
+    public void verifyGetRequest(String queryString, String signatureHeader) {
+        log.info("Signature verification - Query string: {}", queryString);
         log.info("Signature verification - Client secret length: {}",
                 asanaAppProperties.getClientSecret() != null ? asanaAppProperties.getClientSecret().length() : "null");
-        String computed = computeHmac(fullUrl);
+        String computed = computeHmac(queryString);
         log.info("Signature verification - Computed: {}", computed);
         log.info("Signature verification - Received: {}", signatureHeader);
         if (!MessageDigest.isEqual(computed.getBytes(StandardCharsets.UTF_8),

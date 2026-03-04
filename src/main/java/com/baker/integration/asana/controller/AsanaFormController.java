@@ -64,11 +64,8 @@ public class AsanaFormController {
         log.info("X-Forwarded-Proto: {}", request.getHeader("X-Forwarded-Proto"));
         log.info("X-Forwarded-Host: {}", request.getHeader("X-Forwarded-Host"));
 
-        String fullUrl = request.getRequestURL().toString();
-        if (request.getQueryString() != null) {
-            fullUrl += "?" + request.getQueryString();
-        }
-        signatureService.verifyGetRequest(fullUrl, signature);
+        String queryString = request.getQueryString() != null ? request.getQueryString() : "";
+        signatureService.verifyGetRequest(queryString, signature);
 
         log.info("Form metadata requested for task: {}, user: {}", task, user);
 
