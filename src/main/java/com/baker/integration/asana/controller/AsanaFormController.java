@@ -104,11 +104,15 @@ public class AsanaFormController {
 
         // Asana sends data as a JSON-encoded string and signs the unescaped string value
         String dataJson = root.get("data").asText();
+        log.info("on-submit raw data string: {}", dataJson);
+
         signatureService.verifyPostRequest(dataJson, signature);
 
         AsanaSubmitRequest submitRequest = mapper.readValue(dataJson, AsanaSubmitRequest.class);
 
-        log.info("Form submitted for task: {}, user: {}", submitRequest.getTask(), submitRequest.getUser());
+        log.info("on-submit parsed - task: {}, user: {}, workspace: {}, values: {}",
+                submitRequest.getTask(), submitRequest.getUser(),
+                submitRequest.getWorkspace(), submitRequest.getValues());
 
         List<String> selectedAttachments = extractSelectedAttachments(submitRequest.getValues());
 

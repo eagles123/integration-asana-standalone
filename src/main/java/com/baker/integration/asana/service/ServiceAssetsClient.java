@@ -23,6 +23,7 @@ public class ServiceAssetsClient {
     }
 
     public UploadLinkResponse getUploadLink(String fileName, String contentType, String userEmail) {
+        log.info("Requesting upload link - fileName: {}, contentType: {}, userEmail: {}", fileName, contentType, userEmail);
         try {
             UploadLinkResponse response = serviceAssetsWebClient.put()
                     .uri("/integration/assets/upload/link")
@@ -50,6 +51,7 @@ public class ServiceAssetsClient {
     }
 
     public AssetResponse finalizeUpload(String objectKey, String userEmail) {
+        log.info("Finalizing upload - objectKey: {}, userEmail: {}", objectKey, userEmail);
         try {
             AssetResponse response = serviceAssetsWebClient.post()
                     .uri("/integration/assets/upload/link/upload-completed")
