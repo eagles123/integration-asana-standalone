@@ -69,8 +69,10 @@ public class AsanaFormController {
 
         log.info("Form metadata requested for task: {}, user: {}", task, user);
 
+        String baseUrl = getBaseUrl(request);
+
         if (!damTokenStore.hasValidToken(user)) {
-            return ResponseEntity.ok(buildTenantInputForm());
+            return ResponseEntity.ok(buildTenantInputForm(baseUrl));
         }
 
         String accessToken = asanaAppProperties.getPat();
@@ -78,7 +80,7 @@ public class AsanaFormController {
         List<AsanaTag> tags = asanaApiService.getTaskTags(task, accessToken);
         List<AsanaCustomField> customFields = asanaApiService.getTaskCustomFields(task, accessToken);
 
-        Map<String, Object> formResponse = buildFormMetadata(attachments, tags, customFields);
+        Map<String, Object> formResponse = buildFormMetadata(baseUrl, attachments, tags, customFields);
         return ResponseEntity.ok(formResponse);
     }
 
@@ -129,12 +131,13 @@ public class AsanaFormController {
                         "This may take a few minutes depending on file sizes."));
     }
 
-    private Map<String, Object> buildFormMetadata(List<AsanaAttachment> attachments,
+    private Map<String, Object> buildFormMetadata(String baseUrl,
+                                                    List<AsanaAttachment> attachments,
                                                     List<AsanaTag> tags,
                                                     List<AsanaCustomField> customFields) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("title", "Send Attachments to Lytho");
-        metadata.put("on_submit_callback", "/asana/on-submit");
+        metadata.put("on_submit_callback", baseUrl + "/asana/on-submit");
 
         List<Map<String, Object>> fields = new ArrayList<>();
 
@@ -225,10 +228,10 @@ public class AsanaFormController {
         return response;
     }
 
-    private Map<String, Object> buildTenantInputForm() {
+    private Map<String, Object> buildTenantInputForm(String baseUrl) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("title", "Connect to Lytho DAM");
-        metadata.put("on_submit_callback", "/asana/on-submit");
+        metadata.put("on_submit_callback", baseUrl + "/asana/on-submit");
 
         List<Map<String, Object>> fields = new ArrayList<>();
 
