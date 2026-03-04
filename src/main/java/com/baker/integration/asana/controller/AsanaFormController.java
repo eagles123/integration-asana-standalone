@@ -110,19 +110,23 @@ public class AsanaFormController {
                     submitRequest.getUser(), submitRequest.getWorkspace(), lythoTenant.trim());
             String baseUrl = getBaseUrl(request);
             String loginUrl = baseUrl + "/auth/lytho/login?state=" + state;
-            return ResponseEntity.ok(buildLoginLinkForm(loginUrl));
+            return ResponseEntity.ok(buildAttachedResource(
+                    "Login to Lytho DAM", loginUrl));
         }
 
         if (!damTokenStore.hasValidToken(submitRequest.getUser())) {
-            return ResponseEntity.ok(buildMessageResponse("Not Connected",
-                    "Your Lytho DAM session has expired. Please close this dialog and re-open it to log in again."));
+            return ResponseEntity.ok(buildAttachedResource(
+                    "Session Expired - Login to Lytho DAM",
+                    getBaseUrl(request) + "/auth/lytho/login?state=" +
+                            damTokenStore.createLoginState(submitRequest.getUser(),
+                                    submitRequest.getWorkspace(), "qaorange")));
         }
 
         List<String> selectedAttachments = extractSelectedAttachments(submitRequest.getValues());
 
         if (selectedAttachments.isEmpty()) {
-            return ResponseEntity.ok(buildMessageResponse("No Attachments Selected",
-                    "No attachments were selected for upload."));
+            return ResponseEntity.ok(buildAttachedResource(
+                    "No attachments selected", "https://app.asana.com"));
         }
 
         uploadOrchestrator.processAsync(
@@ -132,9 +136,9 @@ public class AsanaFormController {
                 selectedAttachments
         );
 
-        return ResponseEntity.ok(buildMessageResponse("Upload Started",
-                selectedAttachments.size() + " attachment(s) are being uploaded to Lytho. " +
-                        "This may take a few minutes depending on file sizes."));
+        return ResponseEntity.ok(buildAttachedResource(
+                selectedAttachments.size() + " attachment(s) uploading to Lytho",
+                "https://app.asana.com"));
     }
 
     private Map<String, Object> buildFormMetadata(String baseUrl,
@@ -263,40 +267,10 @@ public class AsanaFormController {
         return response;
     }
 
-    private Map<String, Object> buildLoginLinkForm(String loginUrl) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("title", "Log in to Lytho");
-
-        List<Map<String, Object>> fields = new ArrayList<>();
-
-        Map<String, Object> infoField = new LinkedHashMap<>();
-        infoField.put("type", "static_text");
-        infoField.put("id", "login_link");
-        infoField.put("name", "Open this link in a new tab to log in:\n\n" + loginUrl
-                + "\n\nAfter logging in, close this dialog and re-open it.");
-        fields.add(infoField);
-
-        metadata.put("fields", fields);
-
+    private Map<String, Object> buildAttachedResource(String name, String url) {
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("template", "form_metadata_v0");
-        response.put("metadata", metadata);
-        return response;
-    }
-
-    private Map<String, Object> buildMessageResponse(String title, String message) {
-        Map<String, Object> field = new LinkedHashMap<>();
-        field.put("type", "static_text");
-        field.put("id", "confirmation");
-        field.put("name", message);
-
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("title", title);
-        metadata.put("fields", List.of(field));
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("template", "form_metadata_v0");
-        response.put("metadata", metadata);
+        response.put("resource_name", name);
+        response.put("resource_url", url);
         return response;
     }
 
