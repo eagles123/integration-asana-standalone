@@ -90,16 +90,15 @@ public class AsanaFormController {
             @RequestHeader("x-asana-request-signature") String signature,
             HttpServletRequest request) throws IOException {
 
-        log.info("POST raw body: {}", rawBody);
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(rawBody);
 
-        // Asana signs the raw JSON value of the "data" field
-        // Extract the exact raw substring to preserve original formatting
-        String dataJson = extractDataField(rawBody);
-        log.info("POST signature verification - data JSON: {}", dataJson);
+        // Asana sends data as a JSON-encoded string and signs the unescaped string value
+        String dataJson = root.get("data").asText();
+        log.info("POST signature verification - data string: {}", dataJson);
 
         signatureService.verifyPostRequest(dataJson, signature);
 
-        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         AsanaSubmitRequest submitRequest = mapper.readValue(dataJson, AsanaSubmitRequest.class);
 
         log.info("Form submitted for task: {}, user: {}", submitRequest.getTask(), submitRequest.getUser());
@@ -309,27 +308,6 @@ public class AsanaFormController {
             return scheme + "://" + host;
         }
         return scheme + "://" + host + ":" + port;
-    }
-
-    private String extractDataField(String rawBody) {
-        // Find "data": in the raw body and extract the value exactly as-is
-        int dataKeyIndex = rawBody.indexOf("\"data\"");
-        if (dataKeyIndex == -1) return rawBody;
-        int colonIndex = rawBody.indexOf(':', dataKeyIndex + 6);
-        if (colonIndex == -1) return rawBody;
-
-        // Skip whitespace after colon
-        int valueStart = colonIndex + 1;
-        while (valueStart < rawBody.length() && rawBody.charAt(valueStart) == ' ') {
-            valueStart++;
-        }
-
-        // The value is everything from here to the end, minus the closing }
-        // Body format: {"data":<value>}
-        int valueEnd = rawBody.lastIndexOf('}');
-        if (valueEnd <= valueStart) return rawBody;
-
-        return rawBody.substring(valueStart, valueEnd);
     }
 
     private String extractStringValue(Map<String, Object> values, String key) {
