@@ -7,7 +7,13 @@
       "Bash(mvn compile)",
       "Bash(where mvn)",
       "Bash(ls \"c:/Users/KevinFeng/OneDrive - Lytho, Inc/Desktop/repos/integration-asana-standalone/\"*.bat)",
-      "Bash(cmd.exe /c \"where mvn\")"
+      "Bash(cmd.exe /c \"where mvn\")",
+      "WebFetch(domain:developers.asana.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(./mvnw compile -q)",
+      "Bash(mvn compile -q)",
+      "Read(//c/Program Files/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\KevinFeng\\OneDrive - Lytho, Inc\\Desktop\\repos\\integration-asana-standalone\\src\\main\\java\\com\\baker\\integration\\asana\\config"
