@@ -98,12 +98,16 @@ public class AsanaFormController {
             @RequestHeader("x-asana-request-signature") String signature,
             HttpServletRequest request) throws IOException {
 
+        log.info("on-submit raw body: {}", rawBody);
+
         signatureService.verifyPostRequest(rawBody, signature);
 
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         AsanaSubmitRequest submitRequest = mapper.readValue(rawBody, AsanaSubmitRequest.class);
 
-        log.info("Form submitted for task: {}, user: {}", submitRequest.getTask(), submitRequest.getUser());
+        log.info("on-submit parsed - task: {}, user: {}, workspace: {}, values: {}",
+                submitRequest.getTask(), submitRequest.getUser(),
+                submitRequest.getWorkspace(), submitRequest.getValues());
 
         List<String> selectedAttachments = extractSelectedAttachments(submitRequest.getValues());
 
