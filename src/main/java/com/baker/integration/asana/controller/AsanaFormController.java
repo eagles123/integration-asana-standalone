@@ -121,9 +121,11 @@ public class AsanaFormController {
                     "No attachments selected", "https://app.asana.com"));
         }
 
+        String baseUrl = getBaseUrl(request);
         return ResponseEntity.ok(asanaSubmitFlowService.handleSubmit(
                 submitRequest,
-                selectedAttachments
+                selectedAttachments,
+                baseUrl
         ));
     }
 

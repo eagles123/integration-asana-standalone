@@ -21,6 +21,8 @@ asana:
   personal-access-token: ${ASANA_PAT:}
 
 tenant-mapping:
+  default-tenant-id: ${ASANA_DEFAULT_TENANT_ID:default}
+  default-realm: ${ASANA_DEFAULT_REALM:qaorange}
   workspace-tenant-map: {}
   tenant-realm-map: {}
 

@@ -16,10 +16,16 @@ public class TenantResolutionService {
     public TenantContext resolve(String workspaceGid) {
         String tenantId = tenantMappingProperties.getWorkspaceTenantMap().get(workspaceGid);
         if (tenantId == null || tenantId.isBlank()) {
+            tenantId = tenantMappingProperties.getDefaultTenantId();
+        }
+        if (tenantId == null || tenantId.isBlank()) {
             throw new IllegalArgumentException("No tenant mapping found for workspace: " + workspaceGid);
         }
 
         String realm = tenantMappingProperties.getTenantRealmMap().get(tenantId);
+        if (realm == null || realm.isBlank()) {
+            realm = tenantMappingProperties.getDefaultRealm();
+        }
         if (realm == null || realm.isBlank()) {
             throw new IllegalArgumentException("No Keycloak realm mapping found for tenant: " + tenantId);
         }
