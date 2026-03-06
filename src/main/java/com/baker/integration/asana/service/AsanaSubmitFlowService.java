@@ -63,9 +63,8 @@ public class AsanaSubmitFlowService {
 
     private Map<String, Object> buildSuccessResponse(String message) {
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("resource_name", message);
-        response.put("resource_url", "https://app.asana.com");
         response.put("status", "ok");
+        response.put("message", message);
         return response;
     }
 }

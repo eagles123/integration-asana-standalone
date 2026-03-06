@@ -120,8 +120,7 @@ public class AsanaFormController {
         if (selectedAttachments.isEmpty()) {
             log.info("on-submit no attachments selected - task: {}, user: {}",
                     submitRequest.getTask(), submitRequest.getUser());
-            return ResponseEntity.ok(buildAttachedResource(
-                    "No attachments selected", "https://app.asana.com"));
+            return ResponseEntity.ok(buildStatusResponse("no_attachments_selected", "No attachments selected"));
         }
 
         Map<String, Object> response = asanaSubmitFlowService.handleSubmit(
@@ -240,10 +239,10 @@ public class AsanaFormController {
         return response;
     }
 
-    private Map<String, Object> buildAttachedResource(String name, String url) {
+    private Map<String, Object> buildStatusResponse(String status, String message) {
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("resource_name", name);
-        response.put("resource_url", url);
+        response.put("status", status);
+        response.put("message", message);
         return response;
     }
 

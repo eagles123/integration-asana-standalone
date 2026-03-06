@@ -34,16 +34,18 @@ public class FileTransferService {
                              String flowId, String attachmentGid) {
         try {
             long startedAt = System.currentTimeMillis();
+            URI sourceUri = URI.create(sourceUrl);
+            URI uploadUri = URI.create(presignedUploadUrl);
             log.info("file transfer started - flowId={}, attachmentGid={}, contentType={}, size={}, sourceHost={}, uploadHost={}",
-                    flowId, attachmentGid, contentType, contentLength, extractHost(sourceUrl), extractHost(presignedUploadUrl));
+                    flowId, attachmentGid, contentType, contentLength, sourceUri.getHost(), uploadUri.getHost());
 
             Flux<DataBuffer> downloadStream = streamingWebClient.get()
-                    .uri(sourceUrl)
+                    .uri(sourceUri)
                     .retrieve()
                     .bodyToFlux(DataBuffer.class);
 
             WebClient.RequestBodySpec uploadSpec = streamingWebClient.put()
-                    .uri(presignedUploadUrl)
+                    .uri(uploadUri)
                     .header(HttpHeaders.CONTENT_TYPE, contentType);
 
             if (contentLength != null && contentLength > 0) {
@@ -67,14 +69,6 @@ public class FileTransferService {
             log.error("file transfer failed - flowId={}, attachmentGid={}, error={}",
                     flowId, attachmentGid, e.getMessage(), e);
             throw new FileTransferException("File transfer failed", e);
-        }
-    }
-
-    private String extractHost(String url) {
-        try {
-            return URI.create(url).getHost();
-        } catch (Exception ignored) {
-            return "unknown";
         }
     }
 
