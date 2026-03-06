@@ -42,30 +42,25 @@ public class AsanaSubmitFlowService {
     }
 
     public Map<String, Object> handleSubmit(AsanaSubmitRequest submitRequest,
-                                            List<String> selectedAttachments,
-                                            String baseUrl) {
-        TenantContext tenantContext = tenantResolutionService.resolve(submitRequest.getWorkspace());
+                                            List<String> selectedAttachments) {
         Optional<AsanaConnection> linkedConnection = asanaConnectionService.findLinkedByWorkspaceAndUser(
                 submitRequest.getWorkspace(), submitRequest.getUser());
 
         if (linkedConnection.isEmpty()) {
             return buildConnectAccountResponse(
-                    submitRequest.getWorkspace(),
-                    submitRequest.getUser(),
-                    tenantContext.getTenantId(),
-                    baseUrl,
                     "Connect account to continue");
         }
 
         AsanaConnection connection = linkedConnection.get();
-        if (!tenantContext.getTenantId().equals(connection.getTenantId())) {
-            asanaConnectionService.markNeedsReauth(connection);
-            return buildConnectAccountResponse(
-                    submitRequest.getWorkspace(),
-                    submitRequest.getUser(),
-                    tenantContext.getTenantId(),
-                    baseUrl,
-                    "Connection tenant mismatch. Reconnect account.");
+        try {
+            TenantContext tenantContext = tenantResolutionService.resolve(submitRequest.getWorkspace());
+            if (!tenantContext.getTenantId().equals(connection.getTenantId())) {
+                asanaConnectionService.markNeedsReauth(connection);
+                return buildConnectAccountResponse("Connection tenant mismatch. Reconnect account.");
+            }
+        } catch (IllegalArgumentException e) {
+            log.warn("Tenant mapping unavailable for workspace {}. Skipping tenant consistency check.",
+                    submitRequest.getWorkspace());
         }
 
         try {
@@ -76,12 +71,7 @@ public class AsanaSubmitFlowService {
         } catch (Exception e) {
             log.warn("Token refresh failed for connection {}: {}", connection.getId(), e.getMessage());
             asanaConnectionService.markNeedsReauth(connection);
-            return buildConnectAccountResponse(
-                    submitRequest.getWorkspace(),
-                    submitRequest.getUser(),
-                    tenantContext.getTenantId(),
-                    baseUrl,
-                    "Connection expired. Reconnect account.");
+            return buildConnectAccountResponse("Connection expired. Reconnect account.");
         }
 
         if (!zapierWebhookService.isConfigured()) {
@@ -105,11 +95,7 @@ public class AsanaSubmitFlowService {
         return buildSuccessResponse(selectedAttachments.size() + " attachment(s) sent to Zapier");
     }
 
-    private Map<String, Object> buildConnectAccountResponse(String workspaceGid,
-                                                            String asanaUserGid,
-                                                            String tenantId,
-                                                            String baseUrl,
-                                                            String message) {
+    private Map<String, Object> buildConnectAccountResponse(String message) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("resource_name", message);
         response.put("resource_url", HARDCODED_CONNECT_URL);
