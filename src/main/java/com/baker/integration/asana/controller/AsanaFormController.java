@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 public class AsanaFormController {
 
     private static final Logger log = LoggerFactory.getLogger(AsanaFormController.class);
+    private static final Set<String> UPLOADED_ATTACHMENT_GIDS = Set.of("1213529618502505");
 
     private final AsanaSignatureVerificationService signatureService;
     private final AsanaAppProperties asanaAppProperties;
@@ -87,6 +88,11 @@ public class AsanaFormController {
         List<AsanaAttachment> attachments = asanaApiService.getTaskAttachments(task, accessToken);
         List<AsanaTag> tags = asanaApiService.getTaskTags(task, accessToken);
         List<AsanaCustomField> customFields = asanaApiService.getTaskCustomFields(task, accessToken);
+        long alreadyUploadedCount = attachments.stream()
+                .filter(a -> UPLOADED_ATTACHMENT_GIDS.contains(a.getGid()))
+                .count();
+        log.info("Form metadata attachment status - task: {}, total: {}, alreadyUploaded: {}",
+                task, attachments.size(), alreadyUploadedCount);
 
         String baseUrl = getBaseUrl(request);
         Map<String, Object> formResponse = buildFormMetadata(baseUrl, userEmail, attachments, tags, customFields);
@@ -206,11 +212,26 @@ public class AsanaFormController {
             infoField.put("name", "This task has no downloadable attachments.");
             fields.add(infoField);
         } else {
+            boolean hasAlreadyUploadedAttachment = attachments.stream()
+                    .anyMatch(a -> UPLOADED_ATTACHMENT_GIDS.contains(a.getGid()));
+            if (hasAlreadyUploadedAttachment) {
+                Map<String, Object> uploadedInfoField = new LinkedHashMap<>();
+                uploadedInfoField.put("type", "static_text");
+                uploadedInfoField.put("id", "uploaded_attachments_info");
+                uploadedInfoField.put("name", "[UPLOADED] ✅ means this attachment was already uploaded.");
+                fields.add(uploadedInfoField);
+            }
+
             List<Map<String, String>> options = attachments.stream()
                     .map(a -> {
                         Map<String, String> option = new LinkedHashMap<>();
                         option.put("id", a.getGid());
-                        String label = a.getName();
+                        String label = (a.getName() != null && !a.getName().isBlank())
+                                ? a.getName()
+                                : "attachment-" + a.getGid();
+                        if (UPLOADED_ATTACHMENT_GIDS.contains(a.getGid())) {
+                            label = "[UPLOADED] ✅ " + label;
+                        }
                         if (a.getContentType() != null) {
                             label += " [" + a.getContentType() + "]";
                         }
