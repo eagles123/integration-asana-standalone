@@ -40,7 +40,8 @@ link-flow:
   token-encryption-key: ${LINK_TOKEN_ENCRYPTION_KEY:}
 
 service-assets:
-  base-url: ${SERVICE_ASSETS_URL:http://baker-service-assets}
+  base-url: ${SERVICE_ASSETS_URL:https://openapi.dev1-cluster.d.lytho.land/v1/assets}
+  api-key: ${SERVICE_ASSETS_API_KEY:IYp10G2CyL17vkjDpZVAm9rCaS14YEtW604EW9i3}
 
 zapier:
   catch-hook-url: ${ZAPIER_CATCH_HOOK_URL:}

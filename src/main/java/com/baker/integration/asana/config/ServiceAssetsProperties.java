@@ -7,8 +7,12 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "service-assets")
 public class ServiceAssetsProperties {
 
-    private String baseUrl = "http://baker-service-assets";
+    private String baseUrl = "https://openapi.dev1-cluster.d.lytho.land/v1/assets";
+    private String apiKey;
 
     public String getBaseUrl() { return baseUrl; }
     public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
+
+    public String getApiKey() { return apiKey; }
+    public void setApiKey(String apiKey) { this.apiKey = apiKey; }
 }

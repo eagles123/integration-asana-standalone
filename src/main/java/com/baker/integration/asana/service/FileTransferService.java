@@ -10,8 +10,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 
+import java.net.URI;
 import java.time.Duration;
 
 @Service
@@ -28,9 +30,12 @@ public class FileTransferService {
         this.timeoutMinutes = timeoutMinutes;
     }
 
-    public void transferFile(String sourceUrl, String presignedUploadUrl, String contentType, Long contentLength) {
+    public void transferFile(String sourceUrl, String presignedUploadUrl, String contentType, Long contentLength,
+                             String flowId, String attachmentGid) {
         try {
-            log.info("Starting file transfer: contentType={}, size={}", contentType, contentLength);
+            long startedAt = System.currentTimeMillis();
+            log.info("file transfer started - flowId={}, attachmentGid={}, contentType={}, size={}, sourceHost={}, uploadHost={}",
+                    flowId, attachmentGid, contentType, contentLength, extractHost(sourceUrl), extractHost(presignedUploadUrl));
 
             Flux<DataBuffer> downloadStream = streamingWebClient.get()
                     .uri(sourceUrl)
@@ -51,9 +56,36 @@ public class FileTransferService {
                     .toBodilessEntity()
                     .block(Duration.ofMinutes(timeoutMinutes));
 
-            log.info("File transfer completed successfully");
+            long durationMs = System.currentTimeMillis() - startedAt;
+            log.info("file transfer completed - flowId={}, attachmentGid={}, durationMs={}",
+                    flowId, attachmentGid, durationMs);
+        } catch (WebClientResponseException e) {
+            log.error("file transfer failed - flowId={}, attachmentGid={}, status={}, body={}",
+                    flowId, attachmentGid, e.getStatusCode(), truncate(e.getResponseBodyAsString()));
+            throw new FileTransferException("File transfer failed", e);
         } catch (Exception e) {
+            log.error("file transfer failed - flowId={}, attachmentGid={}, error={}",
+                    flowId, attachmentGid, e.getMessage(), e);
             throw new FileTransferException("File transfer failed", e);
         }
+    }
+
+    private String extractHost(String url) {
+        try {
+            return URI.create(url).getHost();
+        } catch (Exception ignored) {
+            return "unknown";
+        }
+    }
+
+    private String truncate(String value) {
+        if (value == null) {
+            return null;
+        }
+        int max = 500;
+        if (value.length() <= max) {
+            return value;
+        }
+        return value.substring(0, max) + "...";
     }
 }

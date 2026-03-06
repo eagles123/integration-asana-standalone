@@ -96,8 +96,7 @@ public class AsanaFormController {
     @PostMapping({"/on-submit", "/submit"})
     public ResponseEntity<Map<String, Object>> onSubmit(
             @RequestBody String rawBody,
-            @RequestHeader("x-asana-request-signature") String signature,
-            HttpServletRequest request) throws IOException {
+            @RequestHeader("x-asana-request-signature") String signature) throws IOException {
 
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(rawBody);
@@ -115,18 +114,23 @@ public class AsanaFormController {
                 submitRequest.getWorkspace(), submitRequest.getValues());
 
         List<String> selectedAttachments = extractSelectedAttachments(submitRequest.getValues());
+        log.info("on-submit attachments selected - task: {}, user: {}, selectedAttachmentCount: {}, selectedAttachmentGids: {}",
+                submitRequest.getTask(), submitRequest.getUser(), selectedAttachments.size(), selectedAttachments);
 
         if (selectedAttachments.isEmpty()) {
+            log.info("on-submit no attachments selected - task: {}, user: {}",
+                    submitRequest.getTask(), submitRequest.getUser());
             return ResponseEntity.ok(buildAttachedResource(
                     "No attachments selected", "https://app.asana.com"));
         }
 
-        String baseUrl = getBaseUrl(request);
-        return ResponseEntity.ok(asanaSubmitFlowService.handleSubmit(
+        Map<String, Object> response = asanaSubmitFlowService.handleSubmit(
                 submitRequest,
-                selectedAttachments,
-                baseUrl
-        ));
+                selectedAttachments
+        );
+        log.info("on-submit accepted - task: {}, user: {}, response: {}",
+                submitRequest.getTask(), submitRequest.getUser(), response);
+        return ResponseEntity.ok(response);
     }
 
     private Map<String, Object> buildFormMetadata(String baseUrl,
