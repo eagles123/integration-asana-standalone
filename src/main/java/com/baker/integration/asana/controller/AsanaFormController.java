@@ -24,6 +24,10 @@ public class AsanaFormController {
 
     private static final Logger log = LoggerFactory.getLogger(AsanaFormController.class);
     private static final Set<String> UPLOADED_ATTACHMENT_GIDS = Set.of("1213500143497697");
+    private static final Set<String> UPLOADED_CUSTOM_FIELD_GIDS = Set.of("1212530665634276");
+    private static final Set<String> UPLOADED_TAG_GIDS = Set.of("1211799391905770", "1213313642850387");
+    private static final String UPLOADED_INDICATOR_TEXT =
+            "[UPLOADED] ✅ means this attachment was already uploaded.";
 
     private final AsanaSignatureVerificationService signatureService;
     private final AsanaAppProperties asanaAppProperties;
@@ -88,11 +92,20 @@ public class AsanaFormController {
         List<AsanaAttachment> attachments = asanaApiService.getTaskAttachments(task, accessToken);
         List<AsanaTag> tags = asanaApiService.getTaskTags(task, accessToken);
         List<AsanaCustomField> customFields = asanaApiService.getTaskCustomFields(task, accessToken);
-        long alreadyUploadedCount = attachments.stream()
+        long uploadedAttachmentCount = attachments.stream()
                 .filter(a -> UPLOADED_ATTACHMENT_GIDS.contains(a.getGid()))
                 .count();
-        log.info("Form metadata attachment status - task: {}, total: {}, alreadyUploaded: {}",
-                task, attachments.size(), alreadyUploadedCount);
+        long uploadedTagCount = tags.stream()
+                .filter(t -> UPLOADED_TAG_GIDS.contains(t.getGid()))
+                .count();
+        long uploadedCustomFieldCount = customFields.stream()
+                .filter(cf -> UPLOADED_CUSTOM_FIELD_GIDS.contains(cf.getGid()))
+                .count();
+        log.info("Form metadata upload status - task: {}, uploadedAttachments={}/{}, uploadedTags={}/{}, uploadedCustomFields={}/{}",
+                task,
+                uploadedAttachmentCount, attachments.size(),
+                uploadedTagCount, tags.size(),
+                uploadedCustomFieldCount, customFields.size());
 
         String baseUrl = getBaseUrl(request);
         Map<String, Object> formResponse = buildFormMetadata(baseUrl, userEmail, attachments, tags, customFields);
@@ -148,6 +161,7 @@ public class AsanaFormController {
         metadata.put("on_submit_callback", baseUrl + "/asana/submit");
 
         List<Map<String, Object>> fields = new ArrayList<>();
+        boolean hasAnyUploadedIndicator = false;
 
         // User email display
         if (userEmail != null && !userEmail.isBlank()) {
@@ -165,11 +179,19 @@ public class AsanaFormController {
                     .toList();
 
             if (!fieldsWithValues.isEmpty()) {
+                if (fieldsWithValues.stream().anyMatch(cf -> UPLOADED_CUSTOM_FIELD_GIDS.contains(cf.getGid()))) {
+                    hasAnyUploadedIndicator = true;
+                }
+
                 List<Map<String, String>> cfOptions = fieldsWithValues.stream()
                         .map(cf -> {
                             Map<String, String> option = new LinkedHashMap<>();
                             option.put("id", cf.getGid());
-                            option.put("label", cf.getName() + ": " + cf.getDisplayValue());
+                            String label = cf.getName() + ": " + cf.getDisplayValue();
+                            if (UPLOADED_CUSTOM_FIELD_GIDS.contains(cf.getGid())) {
+                                label += " [UPLOADED] ✅";
+                            }
+                            option.put("label", label);
                             return option;
                         })
                         .collect(Collectors.toList());
@@ -186,11 +208,19 @@ public class AsanaFormController {
 
         // Tags section
         if (!tags.isEmpty()) {
+            if (tags.stream().anyMatch(t -> UPLOADED_TAG_GIDS.contains(t.getGid()))) {
+                hasAnyUploadedIndicator = true;
+            }
+
             List<Map<String, String>> tagOptions = tags.stream()
                     .map(t -> {
                         Map<String, String> option = new LinkedHashMap<>();
                         option.put("id", t.getGid());
-                        option.put("label", t.getName());
+                        String label = t.getName();
+                        if (UPLOADED_TAG_GIDS.contains(t.getGid())) {
+                            label += " [UPLOADED] ✅";
+                        }
+                        option.put("label", label);
                         return option;
                     })
                     .collect(Collectors.toList());
@@ -212,14 +242,8 @@ public class AsanaFormController {
             infoField.put("name", "This task has no downloadable attachments.");
             fields.add(infoField);
         } else {
-            boolean hasAlreadyUploadedAttachment = attachments.stream()
-                    .anyMatch(a -> UPLOADED_ATTACHMENT_GIDS.contains(a.getGid()));
-            if (hasAlreadyUploadedAttachment) {
-                Map<String, Object> uploadedInfoField = new LinkedHashMap<>();
-                uploadedInfoField.put("type", "static_text");
-                uploadedInfoField.put("id", "uploaded_attachments_info");
-                uploadedInfoField.put("name", "[UPLOADED] ✅ means this attachment was already uploaded.");
-                fields.add(uploadedInfoField);
+            if (attachments.stream().anyMatch(a -> UPLOADED_ATTACHMENT_GIDS.contains(a.getGid()))) {
+                hasAnyUploadedIndicator = true;
             }
 
             List<Map<String, String>> options = attachments.stream()
@@ -230,7 +254,7 @@ public class AsanaFormController {
                                 ? a.getName()
                                 : "attachment-" + a.getGid();
                         if (UPLOADED_ATTACHMENT_GIDS.contains(a.getGid())) {
-                            label = "[UPLOADED] ✅ " + label;
+                            label += " [UPLOADED] ✅";
                         }
                         if (a.getContentType() != null) {
                             label += " [" + a.getContentType() + "]";
@@ -250,6 +274,14 @@ public class AsanaFormController {
             selectField.put("is_required", true);
             selectField.put("options", options);
             fields.add(selectField);
+        }
+
+        if (hasAnyUploadedIndicator) {
+            Map<String, Object> uploadedInfoField = new LinkedHashMap<>();
+            uploadedInfoField.put("type", "static_text");
+            uploadedInfoField.put("id", "uploaded_attachments_info");
+            uploadedInfoField.put("name", UPLOADED_INDICATOR_TEXT);
+            fields.add(uploadedInfoField);
         }
 
         metadata.put("fields", fields);
