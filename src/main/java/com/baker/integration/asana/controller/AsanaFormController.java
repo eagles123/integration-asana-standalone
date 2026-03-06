@@ -27,7 +27,7 @@ public class AsanaFormController {
     private static final Set<String> UPLOADED_CUSTOM_FIELD_GIDS = Set.of("1212530665634276");
     private static final Set<String> UPLOADED_TAG_GIDS = Set.of("1211799391905770", "1213313642850387");
     private static final String UPLOADED_INDICATOR_TEXT =
-            "[UPLOADED] ✅ means this attachment was already uploaded.";
+            "✅ means this attachment was already uploaded.";
 
     private final AsanaSignatureVerificationService signatureService;
     private final AsanaAppProperties asanaAppProperties;
@@ -189,7 +189,7 @@ public class AsanaFormController {
                             option.put("id", cf.getGid());
                             String label = cf.getName() + ": " + cf.getDisplayValue();
                             if (UPLOADED_CUSTOM_FIELD_GIDS.contains(cf.getGid())) {
-                                label += " [UPLOADED] ✅";
+                                label += " ✅";
                             }
                             option.put("label", label);
                             return option;
@@ -218,7 +218,7 @@ public class AsanaFormController {
                         option.put("id", t.getGid());
                         String label = t.getName();
                         if (UPLOADED_TAG_GIDS.contains(t.getGid())) {
-                            label += " [UPLOADED] ✅";
+                            label += " ✅";
                         }
                         option.put("label", label);
                         return option;
@@ -254,7 +254,7 @@ public class AsanaFormController {
                                 ? a.getName()
                                 : "attachment-" + a.getGid();
                         if (UPLOADED_ATTACHMENT_GIDS.contains(a.getGid())) {
-                            label += " [UPLOADED] ✅";
+                            label += " ✅";
                         }
                         if (a.getContentType() != null) {
                             label += " [" + a.getContentType() + "]";
