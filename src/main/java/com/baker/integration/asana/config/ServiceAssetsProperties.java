@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "service-assets")
 public class ServiceAssetsProperties {
 
-    private String baseUrl = "https://openapi.dev1-cluster.d.lytho.land/v1/assets";
+    private String baseUrl = "https://openapi.us-1.golytho.us/v1/assets";
     private String apiKey;
 
     public String getBaseUrl() { return baseUrl; }
