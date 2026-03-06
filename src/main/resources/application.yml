@@ -2,13 +2,47 @@ server:
   port: ${PORT:8802}
   forward-headers-strategy: framework
 
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:asana;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    open-in-view: false
+  h2:
+    console:
+      enabled: ${SPRING_H2_CONSOLE_ENABLED:false}
+
 asana:
   client-secret: ${ASANA_CLIENT_SECRET:}
   api-base-url: https://app.asana.com/api/1.0
   personal-access-token: ${ASANA_PAT:}
 
+tenant-mapping:
+  workspace-tenant-map: {}
+  tenant-realm-map: {}
+
+keycloak:
+  base-url: ${KEYCLOAK_BASE_URL:}
+  client-id: ${KEYCLOAK_CLIENT_ID:}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET:}
+  redirect-uri: ${KEYCLOAK_REDIRECT_URI:}
+  scope: ${KEYCLOAK_SCOPE:openid profile offline_access}
+  timeout-seconds: ${KEYCLOAK_TIMEOUT_SECONDS:10}
+
+link-flow:
+  state-signing-secret: ${LINK_STATE_SIGNING_SECRET:}
+  state-ttl-seconds: ${LINK_STATE_TTL_SECONDS:600}
+  token-encryption-key: ${LINK_TOKEN_ENCRYPTION_KEY:}
+
 service-assets:
   base-url: ${SERVICE_ASSETS_URL:http://baker-service-assets}
+
+zapier:
+  catch-hook-url: ${ZAPIER_CATCH_HOOK_URL:}
+  timeout-seconds: ${ZAPIER_TIMEOUT_SECONDS:10}
 
 file-transfer:
   max-concurrent: 5

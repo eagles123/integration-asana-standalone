@@ -13,10 +13,15 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(./mvnw compile -q)",
       "Bash(mvn compile -q)",
-      "Read(//c/Program Files/**)"
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/KevinFeng/OneDrive - Lytho, Inc/Desktop/repos//**)",
+      "Read(//c/Users/KevinFeng/OneDrive - Lytho, Inc/Desktop/repos/integration-asana-standalone/**)",
+      "Read(//c/Users/KevinFeng/OneDrive - Lytho, Inc/Desktop/repos/**)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\KevinFeng\\OneDrive - Lytho, Inc\\Desktop\\repos\\integration-asana-standalone\\src\\main\\java\\com\\baker\\integration\\asana\\config"
+      "c:\\Users\\KevinFeng\\OneDrive - Lytho, Inc\\Desktop\\repos\\integration-asana-standalone\\src\\main\\java\\com\\baker\\integration\\asana\\config",
+      "c:\\Users\\KevinFeng\\OneDrive - Lytho, Inc\\Desktop\\repos\\front\\projects\\admin-dashboard\\src\\app\\services",
+      "c:\\Users\\KevinFeng\\OneDrive - Lytho, Inc\\Desktop\\repos\\front\\projects\\admin-dashboard\\src\\app\\modules\\tenants\\containers\\tenant-integrations"
     ]
   }
 }

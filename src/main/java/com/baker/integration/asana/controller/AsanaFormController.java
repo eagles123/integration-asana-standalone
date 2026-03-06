@@ -7,7 +7,7 @@ import com.baker.integration.asana.model.asana.AsanaSubmitRequest;
 import com.baker.integration.asana.model.asana.AsanaTag;
 import com.baker.integration.asana.service.AsanaApiService;
 import com.baker.integration.asana.service.AsanaSignatureVerificationService;
-import com.baker.integration.asana.service.AttachmentUploadOrchestrator;
+import com.baker.integration.asana.service.AsanaSubmitFlowService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,16 +27,16 @@ public class AsanaFormController {
     private final AsanaSignatureVerificationService signatureService;
     private final AsanaAppProperties asanaAppProperties;
     private final AsanaApiService asanaApiService;
-    private final AttachmentUploadOrchestrator uploadOrchestrator;
+    private final AsanaSubmitFlowService asanaSubmitFlowService;
 
     public AsanaFormController(AsanaSignatureVerificationService signatureService,
                                AsanaAppProperties asanaAppProperties,
                                AsanaApiService asanaApiService,
-                               AttachmentUploadOrchestrator uploadOrchestrator) {
+                               AsanaSubmitFlowService asanaSubmitFlowService) {
         this.signatureService = signatureService;
         this.asanaAppProperties = asanaAppProperties;
         this.asanaApiService = asanaApiService;
-        this.uploadOrchestrator = uploadOrchestrator;
+        this.asanaSubmitFlowService = asanaSubmitFlowService;
     }
 
     @GetMapping("/health")
@@ -93,7 +93,7 @@ public class AsanaFormController {
         return ResponseEntity.ok(formResponse);
     }
 
-    @PostMapping("/on-submit")
+    @PostMapping({"/on-submit", "/submit"})
     public ResponseEntity<Map<String, Object>> onSubmit(
             @RequestBody String rawBody,
             @RequestHeader("x-asana-request-signature") String signature,
@@ -121,21 +121,12 @@ public class AsanaFormController {
                     "No attachments selected", "https://app.asana.com"));
         }
 
-        // Fetch user email for DAM user lookup
-        String accessToken = asanaAppProperties.getPersonalAccessToken();
-        String userEmail = asanaApiService.getUserEmail(submitRequest.getUser(), accessToken);
-        log.info("Submitting upload for user email: {}", userEmail);
-
-        uploadOrchestrator.processAsync(
-                submitRequest.getTask(),
-                submitRequest.getUser(),
-                userEmail,
-                selectedAttachments
-        );
-
-        return ResponseEntity.ok(buildAttachedResource(
-                selectedAttachments.size() + " attachment(s) uploading to Lytho",
-                "https://app.asana.com"));
+        String baseUrl = getBaseUrl(request);
+        return ResponseEntity.ok(asanaSubmitFlowService.handleSubmit(
+                submitRequest,
+                selectedAttachments,
+                baseUrl
+        ));
     }
 
     private Map<String, Object> buildFormMetadata(String baseUrl,
@@ -145,7 +136,7 @@ public class AsanaFormController {
                                                     List<AsanaCustomField> customFields) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("title", "Send Attachments to Lytho");
-        metadata.put("on_submit_callback", baseUrl + "/asana/on-submit");
+        metadata.put("on_submit_callback", baseUrl + "/asana/submit");
 
         List<Map<String, Object>> fields = new ArrayList<>();
 
@@ -231,7 +222,7 @@ public class AsanaFormController {
             Map<String, Object> selectField = new LinkedHashMap<>();
             selectField.put("type", "checkbox");
             selectField.put("id", "selected_attachments");
-            selectField.put("name", "Select attachments to upload");
+            selectField.put("name", "Select attachments to send");
             selectField.put("is_required", true);
             selectField.put("options", options);
             fields.add(selectField);
