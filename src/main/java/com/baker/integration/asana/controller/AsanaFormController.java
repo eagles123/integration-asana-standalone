@@ -50,30 +50,6 @@ public class AsanaFormController {
         return ResponseEntity.ok(Map.of("status", "ok", "version", "v3"));
     }
 
-    @GetMapping("/widget")
-    public ResponseEntity<Map<String, Object>> getWidget(
-            @RequestParam(required = false) String task,
-            @RequestParam(required = false) String user,
-            @RequestParam(required = false, name = "resource_url") String resourceUrl,
-            @RequestHeader("x-asana-request-signature") String signature,
-            HttpServletRequest request) {
-
-        String queryString = request.getQueryString() != null ? request.getQueryString() : "";
-        signatureService.verifyGetRequest(queryString, signature);
-
-        log.info("Widget requested for task: {}", task);
-
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("title", "Lytho DAM");
-        metadata.put("subtitle", "Lytho DAM Integration");
-        metadata.put("fields", List.of());
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("template", "summary_with_details_v0");
-        response.put("metadata", metadata);
-        return ResponseEntity.ok(response);
-    }
-
     @GetMapping("/form-metadata")
     public ResponseEntity<Map<String, Object>> getFormMetadata(
             @RequestParam String task,
