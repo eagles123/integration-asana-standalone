@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 public class AsanaFormController {
 
     private static final Logger log = LoggerFactory.getLogger(AsanaFormController.class);
-    private static final Set<String> UPLOADED_ATTACHMENT_GIDS = Set.of("1213529618502505");
+    private static final Set<String> UPLOADED_ATTACHMENT_GIDS = Set.of("1213500143497697");
 
     private final AsanaSignatureVerificationService signatureService;
     private final AsanaAppProperties asanaAppProperties;
