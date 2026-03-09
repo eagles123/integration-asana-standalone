@@ -17,9 +17,9 @@ lytho-auth:
   realm: ${LYTHO_KEYCLOAK_REALM:qaorange}
   redirect-uri: ${LYTHO_KEYCLOAK_REDIRECT_URI:https://auth.us-1.golytho.us/callback}
   client-id: ${LYTHO_KEYCLOAK_CLIENT_ID:external-integration}
-  client-secret: ${LYTHO_KEYCLOAK_CLIENT_SECRET:}
+  client-secret: ${LYTHO_KEYCLOAK_CLIENT_SECRET:IKA5RJFjXshiaCUEFhbdOJzlfLxwj6Vy}
   asana-client-id: ${ASANA_APP_CLIENT_ID:1213488390127334}
-  asana-client-secret: ${ASANA_APP_CLIENT_SECRET:}
+  asana-client-secret: ${ASANA_APP_CLIENT_SECRET:a96229b124b57b43f946c78ac2b1ef72}
   scope: ${LYTHO_KEYCLOAK_SCOPE:openid profile email}
 
 service-assets:

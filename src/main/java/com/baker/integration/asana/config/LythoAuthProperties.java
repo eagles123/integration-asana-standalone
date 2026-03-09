@@ -11,9 +11,9 @@ public class LythoAuthProperties {
     private String realm = "qaorange";
     private String redirectUri = "https://auth.us-1.golytho.us/callback";
     private String clientId = "external-integration";
-    private String clientSecret;
+    private String clientSecret = "IKA5RJFjXshiaCUEFhbdOJzlfLxwj6Vy";
     private String asanaClientId = "1213488390127334";
-    private String asanaClientSecret;
+    private String asanaClientSecret = "a96229b124b57b43f946c78ac2b1ef72";
     private String scope = "openid profile email";
 
     public String getKeycloakBaseUrl() {
