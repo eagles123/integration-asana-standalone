@@ -41,13 +41,14 @@ public class AuthInitiationController {
     public ResponseEntity<Void> initiate(HttpServletRequest request) {
         Map<String, Object> statePayload = buildStatePayload(request);
         String redirectUrl = UriComponentsBuilder
-                .fromHttpUrl(buildAuthorizeUrl())
+                .fromUriString(buildAuthorizeUrl())
                 .queryParam("client_id", lythoAuthProperties.getClientId())
                 .queryParam("redirect_uri", lythoAuthProperties.getRedirectUri())
                 .queryParam("response_type", "code")
                 .queryParam("scope", lythoAuthProperties.getScope())
                 .queryParam("state", encodeState(statePayload))
-                .build(true)
+                .build()
+                .encode()
                 .toUriString();
 
         log.info("Redirecting Asana auth initiation to Lytho realm {} for Asana user {} in workspace {}",
