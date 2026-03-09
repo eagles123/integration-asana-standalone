@@ -12,6 +12,16 @@ paragon:
   project-id: ${PARAGON_PROJECT_ID:}
   signing-key: ${PARAGON_SIGNING_KEY:}
 
+lytho-auth:
+  keycloak-base-url: ${LYTHO_KEYCLOAK_BASE_URL:https://login.us-1.golytho.us/auth}
+  realm: ${LYTHO_KEYCLOAK_REALM:qaorange}
+  redirect-uri: ${LYTHO_KEYCLOAK_REDIRECT_URI:https://auth.us-1.golytho.us/callback}
+  client-id: ${LYTHO_KEYCLOAK_CLIENT_ID:external-integration}
+  client-secret: ${LYTHO_KEYCLOAK_CLIENT_SECRET:}
+  asana-client-id: ${ASANA_APP_CLIENT_ID:1213488390127334}
+  asana-client-secret: ${ASANA_APP_CLIENT_SECRET:}
+  scope: ${LYTHO_KEYCLOAK_SCOPE:openid profile email}
+
 service-assets:
   base-url: ${SERVICE_ASSETS_URL:http://baker-service-assets}
 
